@@ -11,6 +11,7 @@ public class ServerSocket
     private readonly Socket _serverSocket;
     private readonly IPEndPoint _serverEndPoint;
     private Dictionary<string, string> _clients;
+    public ConsoleColor NicknameColor;
 
     public string ClientNickname{ get; set; }
 
@@ -64,7 +65,6 @@ public class ServerSocket
         try
         {
             client = _serverSocket.Accept();
-            Console.WriteLine("New connection accepted");
         }
         catch (Exception e)
         {
@@ -91,13 +91,18 @@ public class ServerSocket
                 }
 
                 string text = Encoding.UTF8.GetString(buffer, 0, byteCount);
-                Console.WriteLine("{0}: {1}", ClientNickname, text);
+
+                Console.ForegroundColor = NicknameColor;
+                Console.Write("{0}", ClientNickname, text);
+                Console.ForegroundColor = ConsoleColor.White;
+                Console.WriteLine(": {0}", text);
             }
             catch (SocketException e)
             {
                 // to do - delete client from client list
                 //Console.WriteLine("Socket error: {0}", e.Message);
-                Console.WriteLine("{0} disconnected", ClientNickname);
+                PrintNickname(ClientNickname, NicknameColor);
+                Console.WriteLine(" disconnected");
                 break;
             }
             catch (Exception e)
@@ -108,56 +113,21 @@ public class ServerSocket
         }
     }
 
-    public bool ReceiveNickname(Socket client)
+    public void GenerateAndSendNickname(Socket client)
     {
         try
         {
-            byte[] buffer = new byte[1024];
-            int byteCount = client.Receive(buffer);
-            var stringReceive = Encoding.UTF8.GetString(buffer, 0, byteCount);
-
-
-            if (string.Equals(stringReceive, "noNickname"))
-            {
-                var nameGenerator = new NameGenerator();
-                ClientNickname = nameGenerator.Generate(new Random().Next(4, 8));
-            }
-            else
-            {
-                ClientNickname = stringReceive;
-            }
-
-
-            Console.WriteLine("New client {0} with nickname {1}", client.RemoteEndPoint, ClientNickname);
-        }
-        catch (SocketException e)
-        {
-            Console.WriteLine("Client with address {0} disconnected", client.RemoteEndPoint);
-            return false;
-
-        }
-        catch (Exception e)
-        {
-            Console.WriteLine("Error receiving data from client {0}", client.RemoteEndPoint);
-            Console.WriteLine(e.Message);
-            return false;
-        }
-        return true;
-    }
-
-    public void SendNickname(Socket client)
-    {
-        try
-        {
-            Console.WriteLine("Sedding nickname");
-
             ClientNickname = GenerateNickname();
+            NicknameColor = GenerateColor();
 
-            var bytesData = Encoding.UTF8.GetBytes(ClientNickname);
+            string dataToSend = $"[{ClientNickname}][{NicknameColor}]";
+
+            var bytesData = Encoding.UTF8.GetBytes(dataToSend);
             client.Send(bytesData);
         }
         catch (Exception e)
         {
+            Console.WriteLine("Error while sending nickname");
             Console.WriteLine(e.Message);
         }
     }
@@ -168,6 +138,21 @@ public class ServerSocket
         var nickname = nameGenerator.Generate(new Random().Next(4, 8));
 
         return nickname;
+    }
+
+    public ConsoleColor GenerateColor()
+    {
+        var random = new Random().Next(1, 14);
+        var color = (ConsoleColor)Enum.ToObject(typeof(ConsoleColor), random);
+
+        return color;
+    }
+
+    public void PrintNickname(string nickname, ConsoleColor color)
+    {
+        Console.ForegroundColor = color;
+        Console.Write(nickname);
+        Console.ForegroundColor = ConsoleColor.White;
     }
 }
 

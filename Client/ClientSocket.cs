@@ -1,12 +1,14 @@
 ﻿using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace SocketPR;
 
 public class ClientSocket
 {
     private readonly Socket _clientSocket;
+    private ConsoleColor _myColor = ConsoleColor.White;
 
     public string Nickname { get; set; } = string.Empty;
 
@@ -39,7 +41,9 @@ public class ClientSocket
         {
             try
             {
-                Console.Write("{0}: ", Nickname);
+                printNickname(Nickname, _myColor);
+                Console.Write(": ");
+
                 var text = Console.ReadLine() ?? "";
 
                 if (text == "x") break;
@@ -65,10 +69,17 @@ public class ClientSocket
             byte[] bufferReceive = new byte[1024];
             _clientSocket.Receive(bufferReceive);
 
-            var nickNameFromServer = Encoding.UTF8.GetString(bufferReceive);
+            var dataFromServer = Encoding.UTF8.GetString(bufferReceive);
 
-            Console.WriteLine("Your nickname is {0}", nickNameFromServer);
+            var nickNameFromServer = Regex.Matches(dataFromServer, @"\w+").First().ToString();
             Nickname = nickNameFromServer;
+
+            var color = Regex.Matches(dataFromServer, @"\w+").Last().ToString();
+            _myColor = Enum.Parse<ConsoleColor>(color);
+
+            Console.Write("Welcome to server, your nickname is ");
+            printNickname(Nickname, _myColor);
+            Console.WriteLine();
         }
         catch (Exception e)
         {
@@ -78,56 +89,11 @@ public class ClientSocket
         return true;
     }
 
-    public void ChoiseNickname()
+    private void printNickname(string nickname, ConsoleColor color)
     {
-        try
-        {
-            Console.WriteLine("Enter your nickname or press ENTER to get a random one");
-
-            Console.Write("Nickname: ");
-            //var nickname = Console.ReadLine();
-
-
-
-            var sb = new StringBuilder("");
-            var key = Console.ReadKey();
-            while (key.Key != ConsoleKey.Enter)
-            {
-                sb.Append(key.KeyChar);
-                key = Console.ReadKey();
-            }
-
-            var nickname = sb.Length > 0 ? sb.ToString() : "noNickname";
-
-            var bytesData = Encoding.UTF8.GetBytes(nickname);
-
-            _clientSocket.Send(bytesData);
-
-            byte[] bufferReceive = new byte[1024];
-            _clientSocket.Receive(bufferReceive);
-
-            var nickNameFromServer = Encoding.UTF8.GetString(bufferReceive);
-
-            if (nickname == nickNameFromServer)
-            {
-                Console.WriteLine("Nickname {0} accepted.", nickname);
-                Nickname = nickname;
-            }
-            else
-            {
-                Console.WriteLine("Your nickname is {0}", nickNameFromServer);
-                Nickname = nickNameFromServer;
-            }
-
-            Console.Write("Press any key to continue...");
-            Console.ReadKey();
-        }
-        catch (Exception e)
-        {
-            Console.WriteLine(e.Message);
-        }
-
-
+        Console.ForegroundColor = color;
+        Console.Write(nickname);
+        Console.ForegroundColor = ConsoleColor.White;
     }
 }
 
