@@ -1,21 +1,19 @@
 ﻿using System.Net.Sockets;
-using SocketPR;
+using SocketTCP;
 
 var server = new ServerSocket("127.0.0.1", 5050);
 
 if (!server.BindAndListen(15))
     return;
 
-Socket client;
 
 while (true)
 {
-    client = server.AcceptClient();
+    SocketTCP.Client client = new SocketTCP.Client();
 
-    server.GenerateAndSendNickname(client);
+    client.Socket = await server.AcceptClient();
 
-    server.PrintNickname(server.ClientNickname, server.NicknameColor);
-    Console.WriteLine(" connected");
+    server.Clients.Add(client);
 
-    server.ReceiveMessageLoop(client);
+    ThreadPool.QueueUserWorkItem(state => server.Handle(client));
 }

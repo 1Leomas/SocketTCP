@@ -1,6 +1,6 @@
 ﻿using System.Text;
 
-namespace SocketPR;
+namespace SocketTCP;
 
 internal class NameGenerator
 {

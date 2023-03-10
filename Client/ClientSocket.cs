@@ -3,7 +3,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace SocketPR;
+namespace SocketTCP;
 
 public class ClientSocket
 {
@@ -14,18 +14,20 @@ public class ClientSocket
 
     public ClientSocket()
     {
-        _clientSocket = new Socket(AddressFamily.InterNetwork, 
-            SocketType.Stream, ProtocolType.Tcp);
+        _clientSocket = new Socket(
+            AddressFamily.InterNetwork, 
+            SocketType.Stream, 
+            ProtocolType.Tcp);
     }
 
-    public void Connect(string remoteIP, int remotePort)
+    public async Task Connect(string remoteIP, int remotePort)
     {
         var ipAddress = IPAddress.Parse(remoteIP);
         var remotEndPoint = new IPEndPoint(ipAddress, remotePort);
 
         try
         {
-            _clientSocket.Connect(remotEndPoint);
+            await _clientSocket.ConnectAsync(remotEndPoint);
 
             Console.WriteLine("Client connected to {0}", remotEndPoint);
         }
@@ -35,7 +37,7 @@ public class ClientSocket
         }
     }
 
-    public void SendMessageLoop()
+    public async Task SendMessageLoop()
     {
         while (true)
         {
@@ -50,7 +52,7 @@ public class ClientSocket
 
                 var bytesData = Encoding.UTF8.GetBytes(text);
 
-                _clientSocket.Send(bytesData);
+                await _clientSocket.SendAsync(bytesData, SocketFlags.None);
             }
             catch (Exception e)
             {
@@ -62,12 +64,12 @@ public class ClientSocket
         _clientSocket.Close();
     }
 
-    public bool ReceiveNickname()
+    public async Task<bool> ReceiveNickname()
     {
         try
         {
             byte[] bufferReceive = new byte[1024];
-            _clientSocket.Receive(bufferReceive);
+            await _clientSocket.ReceiveAsync(bufferReceive, SocketFlags.None);
 
             var dataFromServer = Encoding.UTF8.GetString(bufferReceive);
 

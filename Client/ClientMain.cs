@@ -1,10 +1,12 @@
-﻿using SocketPR;
+﻿using SocketTCP;
 
 var client = new ClientSocket();
 
-client.Connect("127.0.0.1", 5050);
+await client.Connect("127.0.0.1", 5050);
 
-if (!client.ReceiveNickname())
+var ifNotReceiveNickname = await client.ReceiveNickname();
+
+if (!ifNotReceiveNickname)
     return;
 
-client.SendMessageLoop();
+await client.SendMessageLoop();

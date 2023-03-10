@@ -1,19 +1,20 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
-using System.Text.RegularExpressions;
+using Client = SocketTCP.Client;
 
-namespace SocketPR;
+namespace SocketTCP;
 
 public class ServerSocket
 {
     private readonly Socket _serverSocket;
     private readonly IPEndPoint _serverEndPoint;
-    private Dictionary<string, string> _clients;
-    public ConsoleColor NicknameColor;
 
-    public string ClientNickname{ get; set; }
+    public List<Client> Clients = new List<Client>();
+
+    //public ConcurrentDictionary<string, string> ClientsList { get; set; }
 
     public ServerSocket(string ip, int port)
     {
@@ -23,6 +24,7 @@ public class ServerSocket
             SocketType.Stream, ProtocolType.Tcp);
 
         _serverEndPoint = new IPEndPoint(ipAddress, port);
+
     }
 
     public bool BindAndListen(int queueLimit)
@@ -47,24 +49,12 @@ public class ServerSocket
         return true;
     }
 
-    public void AcceptAndReceive()
-    {
-        Socket? client;
-
-        client = AcceptClient();
-
-        if (client == null)
-            return;
-
-        ReceiveMessageLoop(client);
-    }
-
-    public Socket AcceptClient()
+    public async Task<Socket> AcceptClient()
     {
         Socket? client = null;
         try
         {
-            client = _serverSocket.Accept();
+            client = await _serverSocket.AcceptAsync();
         }
         catch (Exception e)
         {
@@ -74,7 +64,17 @@ public class ServerSocket
         return client;
     }
 
-    public void ReceiveMessageLoop(Socket client)
+    public async void Handle(Client client)
+    {
+        await GenerateAndSendNickname(client);
+
+        PrintNickname(client.NickName, client.ConsoleColor);
+        Console.WriteLine(" connected");
+
+        await ReceiveMessageLoop(client);
+    }
+
+    public async Task ReceiveMessageLoop(Client client)
     {
 
         while (true)
@@ -82,48 +82,52 @@ public class ServerSocket
             try
             {
                 byte[] buffer = new byte[1024];
-                int byteCount = client.Receive(buffer);
+                int byteCount = await client.Socket.ReceiveAsync(buffer, SocketFlags.None);
 
                 if (byteCount == 0)
                 {
-                    Console.WriteLine("Client disconnected");
+                    PrintNickname(client.NickName, client.ConsoleColor);
+                    Console.WriteLine(" disconnected");
                     return;
                 }
 
                 string text = Encoding.UTF8.GetString(buffer, 0, byteCount);
 
-                Console.ForegroundColor = NicknameColor;
-                Console.Write("{0}", ClientNickname, text);
+                Console.ForegroundColor = client.ConsoleColor;
+                Console.Write("{0}", client.NickName, text);
                 Console.ForegroundColor = ConsoleColor.White;
                 Console.WriteLine(": {0}", text);
             }
-            catch (SocketException e)
+            catch (SocketException)
             {
-                // to do - delete client from client list
-                //Console.WriteLine("Socket error: {0}", e.Message);
-                PrintNickname(ClientNickname, NicknameColor);
+                Clients.Remove(client);
+
+                PrintNickname(client.NickName, client.ConsoleColor);
                 Console.WriteLine(" disconnected");
+
+                Console.WriteLine("{0} clients connected",Clients.Count);
                 break;
             }
             catch (Exception e)
             {
-                Console.WriteLine("Error receiving data from client {0}", client.RemoteEndPoint);
+                Console.WriteLine("Error receiving data from client {0}", client.Socket.RemoteEndPoint);
                 Console.WriteLine(e.Message);
             }
         }
     }
 
-    public void GenerateAndSendNickname(Socket client)
+    public async Task GenerateAndSendNickname(Client client)
     {
         try
         {
-            ClientNickname = GenerateNickname();
-            NicknameColor = GenerateColor();
+            client.NickName = GenerateNickname();
+            client.ConsoleColor = GenerateColor();
 
-            string dataToSend = $"[{ClientNickname}][{NicknameColor}]";
+            string dataToSend = 
+                $"[{client.NickName}][{client.ConsoleColor}]";
 
             var bytesData = Encoding.UTF8.GetBytes(dataToSend);
-            client.Send(bytesData);
+            await client.Socket.SendAsync(bytesData, 0);
         }
         catch (Exception e)
         {
