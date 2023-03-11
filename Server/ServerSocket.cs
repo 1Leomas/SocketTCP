@@ -12,19 +12,18 @@ public class ServerSocket
     private readonly Socket _serverSocket;
     private readonly IPEndPoint _serverEndPoint;
 
-    public List<Client> Clients = new List<Client>();
-
-    //public ConcurrentDictionary<string, string> ClientsList { get; set; }
+    public List<Client> Clients { get; private set; }
 
     public ServerSocket(string ip, int port)
     {
+        Clients = new List<Client>();
+
         var ipAddress = IPAddress.Parse(ip);
 
         _serverSocket = new Socket(AddressFamily.InterNetwork, 
             SocketType.Stream, ProtocolType.Tcp);
 
         _serverEndPoint = new IPEndPoint(ipAddress, port);
-
     }
 
     public bool BindAndListen(int queueLimit)
@@ -65,47 +64,71 @@ public class ServerSocket
     }
 
     public async void Handle(Client client)
-    {
+    { 
+        Clients.Add(client);
+
         await GenerateAndSendNickname(client);
 
-        PrintNickname(client.NickName, client.ConsoleColor);
-        Console.WriteLine(" connected");
+        PrintColoredText(client.NickName, client.ConsoleColor);
+        Console.WriteLine(" connected. Total clients: {0}", Clients.Count);
 
         await ReceiveMessageLoop(client);
     }
 
     public async Task ReceiveMessageLoop(Client client)
     {
-
         while (true)
         {
             try
             {
-                byte[] buffer = new byte[1024];
-                int byteCount = await client.Socket.ReceiveAsync(buffer, SocketFlags.None);
+                byte[] bytesRecived = new byte[1024];
+                int byteCount = await client.Socket.ReceiveAsync(bytesRecived, SocketFlags.None);
 
                 if (byteCount == 0)
                 {
-                    PrintNickname(client.NickName, client.ConsoleColor);
-                    Console.WriteLine(" disconnected");
-                    return;
+                    PrintColoredText(client.NickName, client.ConsoleColor);
+                    Clients.Remove(client);
+                    Console.WriteLine(" disconnected. Total clients: {0}", Clients.Count);
+                    
+                    continue;
                 }
 
-                string text = Encoding.UTF8.GetString(buffer, 0, byteCount);
+                string messageText = Encoding.UTF8.GetString(bytesRecived, 0, byteCount);
 
-                Console.ForegroundColor = client.ConsoleColor;
-                Console.Write("{0}", client.NickName, text);
-                Console.ForegroundColor = ConsoleColor.White;
-                Console.WriteLine(": {0}", text);
+                PrintColoredText(client.NickName, client.ConsoleColor);
+
+                Console.WriteLine(": {0}", messageText);
+
+                foreach (var c in Clients)
+                {
+                    if (c != client)
+                    {
+                        try
+                        {
+                            //send message to other connected clients
+                            var data = 
+                                $"m[{client.NickName}][{client.ConsoleColor}][{messageText}]";
+
+                            var byteToSend = Encoding.UTF8.GetBytes(data);
+                            await c.Socket.SendAsync(byteToSend, SocketFlags.None);
+                        }
+                        catch (SocketException)
+                        {
+                            Clients.Remove(c);
+                        }
+                        catch (Exception e)
+                        {
+                            Console.WriteLine("Error while sending messages to other clients. {0}", e.Message);
+                        }
+                    }
+                }
             }
             catch (SocketException)
             {
+                PrintColoredText(client.NickName, client.ConsoleColor);
                 Clients.Remove(client);
+                Console.WriteLine(" disconnected. Total clients: {0}", Clients.Count);
 
-                PrintNickname(client.NickName, client.ConsoleColor);
-                Console.WriteLine(" disconnected");
-
-                Console.WriteLine("{0} clients connected",Clients.Count);
                 break;
             }
             catch (Exception e)
@@ -131,7 +154,7 @@ public class ServerSocket
         }
         catch (Exception e)
         {
-            Console.WriteLine("Error while sending nickname");
+            Console.WriteLine("Error while sending text");
             Console.WriteLine(e.Message);
         }
     }
@@ -152,10 +175,10 @@ public class ServerSocket
         return color;
     }
 
-    public void PrintNickname(string nickname, ConsoleColor color)
+    public void PrintColoredText(string text, ConsoleColor color)
     {
         Console.ForegroundColor = color;
-        Console.Write(nickname);
+        Console.Write(text);
         Console.ForegroundColor = ConsoleColor.White;
     }
 }

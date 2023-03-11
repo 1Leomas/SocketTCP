@@ -1,5 +1,4 @@
-﻿using System.Net.Sockets;
-using SocketTCP;
+﻿using SocketTCP;
 
 var server = new ServerSocket("127.0.0.1", 5050);
 
@@ -13,7 +12,5 @@ while (true)
 
     client.Socket = await server.AcceptClient();
 
-    server.Clients.Add(client);
-
-    ThreadPool.QueueUserWorkItem(state => server.Handle(client));
+    ThreadPool.QueueUserWorkItem(_ => server.Handle(client));
 }

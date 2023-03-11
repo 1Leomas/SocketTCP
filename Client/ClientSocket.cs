@@ -39,29 +39,82 @@ public class ClientSocket
 
     public async Task SendMessageLoop()
     {
-        while (true)
+        var thread =  new Thread(async () =>
         {
-            try
+            while (true)
             {
+                try
+                {
+                    printNickname(Nickname, _myColor);
+                    Console.Write(": ");
+
+                    var text = Console.ReadLine() ?? "";
+
+                    if (text == "x") break;
+
+                    var bytesData = Encoding.UTF8.GetBytes(text);
+
+                    await _clientSocket.SendAsync(bytesData, SocketFlags.None);
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.Message);
+                    break;
+                }
+            }
+
+            _clientSocket.Close();
+        });
+
+        thread.Start();
+    }
+
+    public async Task ReceiveMessages()
+    {
+        var thread = new Thread(async () =>
+        {
+            while (true)
+            {
+                byte[] buffer = new byte[1024];
+                int byteCount = await _clientSocket.ReceiveAsync(buffer, SocketFlags.None);
+                string dataFromServer = Encoding.UTF8.GetString(buffer, 0, byteCount);
+
+                if (dataFromServer.First() != 'm')
+                    continue;
+
+                var pattern = @"\[([\w\s]+)\]";
+                var replace = @"$1";
+
+                var dataList = Regex
+                    .Matches(dataFromServer, pattern)
+                    .Select(m => m
+                        .Result(replace)
+                        .ToString())
+                    .ToList();
+
+                var nickName = dataList.First();
+
+                var consoleColor = Enum.Parse<ConsoleColor>(dataList[1]);
+
+                var message = dataList.Last();
+
+                var cp = Console.GetCursorPosition();
+                Console.SetCursorPosition(0, cp.Top);
+                Console.Write(new string(' ', Console.WindowWidth));
+                Console.SetCursorPosition(0, cp.Top);
+
+                Console.ForegroundColor = consoleColor;
+                Console.Write("{0}", nickName);
+                Console.ForegroundColor = ConsoleColor.White;
+                Console.WriteLine(": {0}", message);
+
                 printNickname(Nickname, _myColor);
                 Console.Write(": ");
-
-                var text = Console.ReadLine() ?? "";
-
-                if (text == "x") break;
-
-                var bytesData = Encoding.UTF8.GetBytes(text);
-
-                await _clientSocket.SendAsync(bytesData, SocketFlags.None);
             }
-            catch (Exception e)
-            {
-                Console.WriteLine(e.Message);
-                break;
-            }
-        }
+        });
 
-        _clientSocket.Close();
+        thread.Start();
+
     }
 
     public async Task<bool> ReceiveNickname()
