@@ -50,17 +50,17 @@ public class ServerSocket
 
     public async Task<Socket> AcceptClient()
     {
-        Socket? client = null;
+        Socket? socket = null;
         try
         {
-            client = await _serverSocket.AcceptAsync();
+            socket = await _serverSocket.AcceptAsync();
         }
         catch (Exception e)
         {
             Console.WriteLine("Error accepting client: {0}", e.Message);
         }
 
-        return client;
+        return socket;
     }
 
     public async void Handle(Client client)
@@ -81,8 +81,8 @@ public class ServerSocket
         {
             try
             {
-                byte[] bytesRecived = new byte[1024];
-                int byteCount = await client.Socket.ReceiveAsync(bytesRecived, SocketFlags.None);
+                byte[] bytesReceived = new byte[1024];
+                int byteCount = await client.Socket.ReceiveAsync(bytesReceived, SocketFlags.None);
 
                 if (byteCount == 0)
                 {
@@ -93,35 +93,11 @@ public class ServerSocket
                     continue;
                 }
 
-                string messageText = Encoding.UTF8.GetString(bytesRecived, 0, byteCount);
+                string messageText = Encoding.UTF8.GetString(bytesReceived, 0, byteCount);
 
-                PrintColoredText(client.NickName, client.ConsoleColor);
+                PrintClientMessage(client, messageText);
 
-                Console.WriteLine(": {0}", messageText);
-
-                foreach (var c in Clients)
-                {
-                    if (c != client)
-                    {
-                        try
-                        {
-                            //send message to other connected clients
-                            var data = 
-                                $"m[{client.NickName}][{client.ConsoleColor}][{messageText}]";
-
-                            var byteToSend = Encoding.UTF8.GetBytes(data);
-                            await c.Socket.SendAsync(byteToSend, SocketFlags.None);
-                        }
-                        catch (SocketException)
-                        {
-                            Clients.Remove(c);
-                        }
-                        catch (Exception e)
-                        {
-                            Console.WriteLine("Error while sending messages to other clients. {0}", e.Message);
-                        }
-                    }
-                }
+                await SendMessageToOtherClients(client, messageText);
             }
             catch (SocketException)
             {
@@ -139,12 +115,39 @@ public class ServerSocket
         }
     }
 
+    private async Task SendMessageToOtherClients(Client client, string messageText)
+    {
+        foreach (var c in Clients)
+        {
+            if (c == client) continue;
+
+            try
+            {
+                //send message to other connected clients
+                var data =
+                    $"m[{client.NickName}][{client.ConsoleColor}][{messageText}]";
+
+                var byteToSend = Encoding.UTF8.GetBytes(data);
+                await c.Socket.SendAsync(byteToSend, SocketFlags.None);
+            }
+            catch (SocketException)
+            {
+                Clients.Remove(c);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("Error while sending messages to other clients. {0}", e.Message);
+            }
+        }
+    }
+
+
     public async Task SendNickname(Client client)
     {
         try
         {
             string dataToSend = 
-                $"[{client.NickName}][{client.ConsoleColor}]";
+                $"n[{client.NickName}][{client.ConsoleColor}]";
 
             var bytesData = Encoding.UTF8.GetBytes(dataToSend);
             await client.Socket.SendAsync(bytesData, 0);
@@ -156,11 +159,17 @@ public class ServerSocket
         }
     }
 
-    public void PrintColoredText(string text, ConsoleColor color)
+    private void PrintColoredText(string text, ConsoleColor color)
     {
         Console.ForegroundColor = color;
         Console.Write(text);
         Console.ForegroundColor = ConsoleColor.White;
+    }
+
+    private void PrintClientMessage(Client client, string messageText)
+    {
+        PrintColoredText(client.NickName, client.ConsoleColor);
+        Console.WriteLine(": {0}", messageText);
     }
 }
 

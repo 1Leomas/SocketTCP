@@ -8,7 +8,7 @@ namespace SocketTCP;
 public class ClientSocket
 {
     private readonly Socket _clientSocket;
-    private ConsoleColor _myColor = ConsoleColor.White;
+    private ConsoleColor _consoleColor = ConsoleColor.White;
 
     public string Nickname { get; set; } = string.Empty;
 
@@ -45,7 +45,7 @@ public class ClientSocket
             {
                 try
                 {
-                    printNickname(Nickname, _myColor);
+                    printNickname(Nickname, _consoleColor);
                     Console.Write(": ");
 
                     var text = Console.ReadLine() ?? "";
@@ -69,7 +69,7 @@ public class ClientSocket
         thread.Start();
     }
 
-    public async Task ReceiveMessages()
+    public async Task ReceiveMessagesLoop()
     {
         var thread = new Thread(async () =>
         {
@@ -108,7 +108,7 @@ public class ClientSocket
                 Console.ForegroundColor = ConsoleColor.White;
                 Console.WriteLine(": {0}", message);
 
-                printNickname(Nickname, _myColor);
+                printNickname(Nickname, _consoleColor);
                 Console.Write(": ");
             }
         });
@@ -126,15 +126,31 @@ public class ClientSocket
 
             var dataFromServer = Encoding.UTF8.GetString(bufferReceive);
 
-            var nickNameFromServer = Regex.Matches(dataFromServer, @"\w+").First().ToString();
-            Nickname = nickNameFromServer;
+            if (dataFromServer.First() != 'n')
+                return false;
 
-            var color = Regex.Matches(dataFromServer, @"\w+").Last().ToString();
-            _myColor = Enum.Parse<ConsoleColor>(color);
+            var pattern = @"\[(\w+)\]";
+            var replace = @"$1";
+
+            var dataList = Regex
+                .Matches(dataFromServer, pattern)
+                .Select(m => m
+                    .Result(replace)
+                    .ToString())
+                .ToList();
+
+            Nickname = dataList.First();
+
+            _consoleColor = Enum.Parse<ConsoleColor>(dataList.Last());
 
             Console.Write("Welcome to server, your nickname is ");
-            printNickname(Nickname, _myColor);
+            printNickname(Nickname, _consoleColor);
             Console.WriteLine();
+        }
+        catch (SocketException e)
+        {
+            Console.WriteLine(e.Message);
+            return false;
         }
         catch (Exception e)
         {

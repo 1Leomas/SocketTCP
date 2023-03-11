@@ -11,4 +11,4 @@ if (!ifNotReceiveNickname)
 
 await client.SendMessageLoop();
 
-await client.ReceiveMessages();
+await client.ReceiveMessagesLoop();
