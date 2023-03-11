@@ -67,7 +67,7 @@ public class ServerSocket
     { 
         Clients.Add(client);
 
-        await GenerateAndSendNickname(client);
+        await SendNickname(client);
 
         PrintColoredText(client.NickName, client.ConsoleColor);
         Console.WriteLine(" connected. Total clients: {0}", Clients.Count);
@@ -139,13 +139,10 @@ public class ServerSocket
         }
     }
 
-    public async Task GenerateAndSendNickname(Client client)
+    public async Task SendNickname(Client client)
     {
         try
         {
-            client.NickName = GenerateNickname();
-            client.ConsoleColor = GenerateColor();
-
             string dataToSend = 
                 $"[{client.NickName}][{client.ConsoleColor}]";
 
@@ -157,22 +154,6 @@ public class ServerSocket
             Console.WriteLine("Error while sending text");
             Console.WriteLine(e.Message);
         }
-    }
-
-    public string GenerateNickname()
-    {
-        var nameGenerator = new NameGenerator();
-        var nickname = nameGenerator.Generate(new Random().Next(4, 8));
-
-        return nickname;
-    }
-
-    public ConsoleColor GenerateColor()
-    {
-        var random = new Random().Next(1, 14);
-        var color = (ConsoleColor)Enum.ToObject(typeof(ConsoleColor), random);
-
-        return color;
     }
 
     public void PrintColoredText(string text, ConsoleColor color)
