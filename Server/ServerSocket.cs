@@ -3,7 +3,6 @@ using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
-using Client = SocketTCP.Client;
 
 namespace SocketTCP;
 
@@ -46,6 +45,18 @@ public class ServerSocket
             return false;
         }
         return true;
+    }
+
+    public async Task AcceptAndHandleClients()
+    {
+        while (true)
+        {
+            Client client = new Client();
+
+            client.Socket = await AcceptClient();
+
+            ThreadPool.QueueUserWorkItem(_ => Handle(client));
+        }
     }
 
     public async Task<Socket> AcceptClient()
