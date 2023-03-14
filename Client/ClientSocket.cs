@@ -162,7 +162,7 @@ public class ClientSocket
         Console.Write(": {0}", _input);
     }
 
-    public async Task<bool> ReceiveNickname()
+    public async Task ReceiveNickname()
     {
         try
         {
@@ -172,7 +172,7 @@ public class ClientSocket
             var dataFromServer = Encoding.UTF8.GetString(bufferReceive);
 
             if (dataFromServer.First() != 'n')
-                return false;
+                throw new Exception("Received wrong data");
 
             var pattern = @"\[(\w+)\]";
             var replace = @"$1";
@@ -195,14 +195,11 @@ public class ClientSocket
         catch (SocketException e)
         {
             Console.WriteLine(e.Message);
-            return false;
         }
         catch (Exception e)
         {
             Console.WriteLine(e.Message);
-            return false;
         }
-        return true;
     }
 
     private void printNickname(string nickname, ConsoleColor color)

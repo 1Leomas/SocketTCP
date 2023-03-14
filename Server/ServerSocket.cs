@@ -11,11 +11,11 @@ public class ServerSocket
     private readonly Socket _serverSocket;
     private readonly IPEndPoint _serverEndPoint;
 
-    public List<Client> Clients { get; }
+    private List<Client> _clients;
 
     public ServerSocket(string ip, int port)
     {
-        Clients = new List<Client>();
+        _clients = new List<Client>();
 
         var ipAddress = IPAddress.Parse(ip);
 
@@ -73,21 +73,42 @@ public class ServerSocket
         return socket;
     }
 
-    private async void HandleClient(Socket clientSocket)
+    private async Task HandleClient(Socket clientSocket)
     {
         var client = new Client
         {
             Socket = clientSocket
         };
 
-        Clients.Add(client);
+        _clients.Add(client);
 
         await SendNickname(client);
 
         PrintColoredText(client.NickName, client.ConsoleColor);
-        Console.WriteLine(" connected. Total clients: {0}", Clients.Count);
+        Console.WriteLine(" connected. Total clients: {0}", _clients.Count);
 
         await ReceiveMessageLoop(client);
+    }
+
+    public async Task SendNickname(Client client)
+    {
+        try
+        {
+            string dataToSend =
+                $"n[{client.NickName}][{client.ConsoleColor}]";
+
+            var bytesDataToSend = Encoding.UTF8.GetBytes(dataToSend);
+            await client.Socket.SendAsync(bytesDataToSend, 0);
+        }
+        catch (SocketException e)
+        {
+            Console.WriteLine("Error while sending text");
+            Console.WriteLine(e.Message);
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e.Message);
+        }
     }
 
     public async Task ReceiveMessageLoop(Client client)
@@ -127,13 +148,13 @@ public class ServerSocket
     private void RemoveClient(Client client)
     {
         PrintColoredText(client.NickName, client.ConsoleColor);
-        Clients.Remove(client);
-        Console.WriteLine(" disconnected. Total clients: {0}", Clients.Count);
+        _clients.Remove(client);
+        Console.WriteLine(" disconnected. Total clients: {0}", _clients.Count);
     }
 
     private async Task SendMessageToOtherClients(Client client, string messageText)
     {
-        foreach (var c in Clients)
+        foreach (var c in _clients)
         {
             if (c == client) continue;
 
@@ -149,30 +170,12 @@ public class ServerSocket
             catch (SocketException)
             {
                 //to do: sa adaug o metoda de remove cu look
-                Clients.Remove(c);
+                _clients.Remove(c);
             }
             catch (Exception e)
             {
                 Console.WriteLine("Error while sending messages to other clients. {0}", e.Message);
             }
-        }
-    }
-
-
-    public async Task SendNickname(Client client)
-    {
-        try
-        {
-            string dataToSend = 
-                $"n[{client.NickName}][{client.ConsoleColor}]";
-
-            var bytesData = Encoding.UTF8.GetBytes(dataToSend);
-            await client.Socket.SendAsync(bytesData, 0);
-        }
-        catch (Exception e)
-        {
-            Console.WriteLine("Error while sending text");
-            Console.WriteLine(e.Message);
         }
     }
 
