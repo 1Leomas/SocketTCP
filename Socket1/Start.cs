@@ -15,6 +15,7 @@ infoClient.UseShellExecute = true;
 
 Process serverProcess = Process.Start(infoServer);
 
+Thread.Sleep(2000);
 
 for (int i = 0; i < 2; i++)
 {

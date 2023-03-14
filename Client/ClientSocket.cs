@@ -12,7 +12,7 @@ public class ClientSocket
 
     public string Nickname { get; set; } = string.Empty;
 
-    private string _input { get; set; } = "";
+    private StringBuilder _input = new();
 
     public ClientSocket()
     {
@@ -42,53 +42,48 @@ public class ClientSocket
 
     public void SendMessageLoop()
     {
-        Task.Run(() =>
+        //Task.Run(() =>
+        var thread = new Thread(() =>
         {
             while (true)
             {
+                PrintColoredText(Nickname, _consoleColor);
+                Console.Write(": ");
+
+                while (true)
+                {
+                    var inputKey = Console.ReadKey();
+                    if (inputKey.Key == ConsoleKey.Enter) break;
+                    _input.Append(inputKey.KeyChar);
+                }
+
+                var bytesData = Encoding.UTF8.GetBytes(_input.ToString());
+
                 try
                 {
-                    PrintNickname(Nickname, _consoleColor);
-                    Console.Write(": ");
-
-                    while (true)
-                    {
-
-                        var inputKey = Console.ReadKey();
-
-                        if (inputKey.Key == ConsoleKey.Enter) break;
-
-                        _input += inputKey.KeyChar;
-                    }
-
-                    var bytesData = Encoding.UTF8.GetBytes(_input);
-
                     _clientSocket.Send(bytesData);
-
-                    PrintNickname(Nickname, _consoleColor);
-                    Console.WriteLine(": {0}", _input);
-
-                    _input = "";
                 }
                 catch (SocketException e)
                 {
                     Console.WriteLine(e.Message);
                     break;
                 }
-                catch (Exception e)
-                {
-                    Console.WriteLine(e.Message);
-                    break;
-                }
+
+                PrintColoredText(Nickname, _consoleColor);
+                Console.WriteLine(": {0}", _input);
+
+                _input.Clear();
             }
 
             _clientSocket.Close();
         });
+        thread.Start();
     }
 
     public void ReceiveMessagesLoop()
     {
-        Task.Run(() =>
+        //Task.Run(() =>
+        var thread = new Thread(() => 
         {
             while (true)
             {
@@ -116,6 +111,7 @@ public class ClientSocket
                 ProcessAndPrintMessage(dataFromServer);
             }
         });
+        thread.Start();
     }
 
     private void ProcessAndPrintMessage(string dataFromServer)
@@ -146,7 +142,7 @@ public class ClientSocket
         Console.ForegroundColor = ConsoleColor.White;
         Console.WriteLine(": {0}", message);
 
-        PrintNickname(Nickname, _consoleColor);
+        PrintColoredText(Nickname, _consoleColor);
         Console.Write(": {0}", _input);
     }
 
@@ -176,8 +172,8 @@ public class ClientSocket
 
             _consoleColor = Enum.Parse<ConsoleColor>(dataList.Last());
 
-            Console.Write("Welcome to server, your nickname is ");
-            PrintNickname(Nickname, _consoleColor);
+            Console.Write("Welcome to server, your text is ");
+            PrintColoredText(Nickname, _consoleColor);
             Console.WriteLine();
         }
         catch (SocketException e)
@@ -190,10 +186,10 @@ public class ClientSocket
         }
     }
 
-    private void PrintNickname(string nickname, ConsoleColor color)
+    private void PrintColoredText(string text, ConsoleColor color)
     {
         Console.ForegroundColor = color;
-        Console.Write(nickname);
+        Console.Write(text);
         Console.ForegroundColor = ConsoleColor.White;
     }
 }
