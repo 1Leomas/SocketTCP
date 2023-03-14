@@ -5,10 +5,10 @@
 
 var client = new ClientSocket();
 
-await client.Connect("127.0.0.1", 5050);
+client.Connect("127.0.0.1", 5050);
 
-await client.ReceiveNickname();
+client.ReceiveNickname();
 
-await client.SendMessageLoop();
+client.SendMessageLoop();
 
-await client.ReceiveMessagesLoop();
+client.ReceiveMessagesLoop();

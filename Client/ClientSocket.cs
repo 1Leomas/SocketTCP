@@ -22,14 +22,14 @@ public class ClientSocket
             ProtocolType.Tcp);
     }
 
-    public async Task Connect(string remoteIp, int remotePort)
+    public void Connect(string remoteIp, int remotePort)
     {
         var ipAddress = IPAddress.Parse(remoteIp);
         var remoteEndPoint = new IPEndPoint(ipAddress, remotePort);
 
         try
         {
-            await _clientSocket.ConnectAsync(remoteEndPoint);
+            _clientSocket.Connect(remoteEndPoint);
 
             Console.WriteLine("Client connected to {0}", remoteEndPoint);
         }
@@ -40,39 +40,32 @@ public class ClientSocket
         }
     }
 
-    public async Task SendMessageLoop()
+    public void SendMessageLoop()
     {
-        var thread =  new Thread(async () =>
+        Task.Run(() =>
         {
             while (true)
             {
                 try
                 {
-                    printNickname(Nickname, _consoleColor);
+                    PrintNickname(Nickname, _consoleColor);
                     Console.Write(": ");
-
-                    //var text = Console.ReadLine() ?? "";
-                    var text = "";
-
-                    var inputKey = new ConsoleKeyInfo();
 
                     while (true)
                     {
 
-                        inputKey = Console.ReadKey();
+                        var inputKey = Console.ReadKey();
 
                         if (inputKey.Key == ConsoleKey.Enter) break;
 
                         _input += inputKey.KeyChar;
                     }
 
-                    if (text == "x") break;
-
                     var bytesData = Encoding.UTF8.GetBytes(_input);
 
-                    await _clientSocket.SendAsync(bytesData, SocketFlags.None);
+                    _clientSocket.Send(bytesData);
 
-                    printNickname(Nickname, _consoleColor);
+                    PrintNickname(Nickname, _consoleColor);
                     Console.WriteLine(": {0}", _input);
 
                     _input = "";
@@ -91,13 +84,11 @@ public class ClientSocket
 
             _clientSocket.Close();
         });
-
-        thread.Start();
     }
 
-    public async Task ReceiveMessagesLoop()
+    public void ReceiveMessagesLoop()
     {
-        var thread = new Thread(async () =>
+        Task.Run(() =>
         {
             while (true)
             {
@@ -106,7 +97,7 @@ public class ClientSocket
 
                 try
                 {
-                    byteCount = await _clientSocket.ReceiveAsync(buffer, SocketFlags.None);
+                    byteCount = _clientSocket.Receive(buffer);
                 }
                 catch (Exception)
                 {
@@ -125,9 +116,6 @@ public class ClientSocket
                 ProcessAndPrintMessage(dataFromServer);
             }
         });
-
-        thread.Start();
-
     }
 
     private void ProcessAndPrintMessage(string dataFromServer)
@@ -158,16 +146,16 @@ public class ClientSocket
         Console.ForegroundColor = ConsoleColor.White;
         Console.WriteLine(": {0}", message);
 
-        printNickname(Nickname, _consoleColor);
+        PrintNickname(Nickname, _consoleColor);
         Console.Write(": {0}", _input);
     }
 
-    public async Task ReceiveNickname()
+    public void ReceiveNickname()
     {
         try
         {
             byte[] bufferReceive = new byte[1024];
-            await _clientSocket.ReceiveAsync(bufferReceive, SocketFlags.None);
+            _clientSocket.Receive(bufferReceive, SocketFlags.None);
 
             var dataFromServer = Encoding.UTF8.GetString(bufferReceive);
 
@@ -189,7 +177,7 @@ public class ClientSocket
             _consoleColor = Enum.Parse<ConsoleColor>(dataList.Last());
 
             Console.Write("Welcome to server, your nickname is ");
-            printNickname(Nickname, _consoleColor);
+            PrintNickname(Nickname, _consoleColor);
             Console.WriteLine();
         }
         catch (SocketException e)
@@ -202,7 +190,7 @@ public class ClientSocket
         }
     }
 
-    private void printNickname(string nickname, ConsoleColor color)
+    private void PrintNickname(string nickname, ConsoleColor color)
     {
         Console.ForegroundColor = color;
         Console.Write(nickname);

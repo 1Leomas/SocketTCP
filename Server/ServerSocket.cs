@@ -46,24 +46,27 @@ public class ServerSocket
         }
     }
 
-    public async Task AcceptAndHandleClients()
+    public void AcceptAndHandleClients()
     {
         while (true)
         {
-            var clientSocket = await AcceptClient();
+            var clientSocket = AcceptClient();
 
             if (clientSocket == null) continue;
 
-            ThreadPool.QueueUserWorkItem(_ => HandleClient(clientSocket));
+            Task.Run(() =>
+            {
+                HandleClient(clientSocket);
+            });
         }
     }
 
-    public async Task<Socket?> AcceptClient()
+    public Socket? AcceptClient()
     {
-        Socket? socket = null;
+        Socket socket = null!;
         try
         {
-            socket = await _serverSocket.AcceptAsync();
+            socket = _serverSocket.Accept();
         }
         catch (Exception e)
         {
@@ -73,7 +76,7 @@ public class ServerSocket
         return socket;
     }
 
-    private async Task HandleClient(Socket clientSocket)
+    private void HandleClient(Socket clientSocket)
     {
         var client = new Client
         {
@@ -82,15 +85,15 @@ public class ServerSocket
 
         _clients.Add(client);
 
-        await SendNickname(client);
+        SendNickname(client);
 
         PrintColoredText(client.NickName, client.ConsoleColor);
         Console.WriteLine(" connected. Total clients: {0}", _clients.Count);
-
-        await ReceiveMessageLoop(client);
+        
+        ReceiveMessageLoop(client);
     }
 
-    public async Task SendNickname(Client client)
+    private void SendNickname(Client client)
     {
         try
         {
@@ -98,11 +101,12 @@ public class ServerSocket
                 $"n[{client.NickName}][{client.ConsoleColor}]";
 
             var bytesDataToSend = Encoding.UTF8.GetBytes(dataToSend);
-            await client.Socket.SendAsync(bytesDataToSend, 0);
+
+            client.Socket.Send(bytesDataToSend, SocketFlags.None);
         }
         catch (SocketException e)
         {
-            Console.WriteLine("Error while sending text");
+            Console.WriteLine("Error while sending data to client");
             Console.WriteLine(e.Message);
         }
         catch (Exception e)
@@ -111,14 +115,14 @@ public class ServerSocket
         }
     }
 
-    public async Task ReceiveMessageLoop(Client client)
+    private void ReceiveMessageLoop(Client client)
     {
         while (true)
         {
             try
             {
                 byte[] bytesReceived = new byte[1024];
-                int byteCount = await client.Socket.ReceiveAsync(bytesReceived, SocketFlags.None);
+                int byteCount = client.Socket.Receive(bytesReceived, SocketFlags.None);
 
                 if (byteCount == 0)
                 {
@@ -130,7 +134,7 @@ public class ServerSocket
 
                 PrintClientMessage(client, messageText);
 
-                await SendMessageToOtherClients(client, messageText);
+                SendMessageToOtherClients(client, messageText);
             }
             catch (SocketException)
             {
@@ -147,12 +151,13 @@ public class ServerSocket
 
     private void RemoveClient(Client client)
     {
+        //to do: sa adaug o metoda de remove cu look
         PrintColoredText(client.NickName, client.ConsoleColor);
         _clients.Remove(client);
         Console.WriteLine(" disconnected. Total clients: {0}", _clients.Count);
     }
 
-    private async Task SendMessageToOtherClients(Client client, string messageText)
+    private void SendMessageToOtherClients(Client client, string messageText)
     {
         foreach (var c in _clients)
         {
@@ -160,16 +165,14 @@ public class ServerSocket
 
             try
             {
-                //send message to other connected clients
                 var data =
                     $"m[{client.NickName}][{client.ConsoleColor}][{messageText}]";
 
                 var byteToSend = Encoding.UTF8.GetBytes(data);
-                await c.Socket.SendAsync(byteToSend, SocketFlags.None);
+                c.Socket.Send(byteToSend, SocketFlags.None);
             }
             catch (SocketException)
             {
-                //to do: sa adaug o metoda de remove cu look
                 _clients.Remove(c);
             }
             catch (Exception e)

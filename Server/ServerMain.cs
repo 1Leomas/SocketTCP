@@ -12,5 +12,4 @@ catch (Exception e)
     return;
 }
 
-
-await server.AcceptAndHandleClients();
+server.AcceptAndHandleClients();
