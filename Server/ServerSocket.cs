@@ -11,7 +11,7 @@ public class ServerSocket
     private readonly Socket _serverSocket;
     private readonly IPEndPoint _serverEndPoint;
 
-    public List<Client> Clients { get; private set; }
+    public List<Client> Clients { get; }
 
     public ServerSocket(string ip, int port)
     {
@@ -25,7 +25,7 @@ public class ServerSocket
         _serverEndPoint = new IPEndPoint(ipAddress, port);
     }
 
-    public bool BindAndListen(int queueLimit)
+    public void BindAndListen(int queueLimit)
     {
         try
         {
@@ -37,29 +37,28 @@ public class ServerSocket
         catch (SocketException ex)
         {
             Console.WriteLine("Socket error: {0}", ex.Message);
-            return false;
+            throw;
         }
         catch (Exception e)
         {
             Console.WriteLine("Error binding and listening: {0}", e.Message);
-            return false;
+            throw;
         }
-        return true;
     }
 
     public async Task AcceptAndHandleClients()
     {
         while (true)
         {
-            Client client = new Client();
+            var clientSocket = await AcceptClient();
 
-            client.Socket = await AcceptClient();
+            if (clientSocket == null) continue;
 
-            ThreadPool.QueueUserWorkItem(_ => Handle(client));
+            ThreadPool.QueueUserWorkItem(_ => HandleClient(clientSocket));
         }
     }
 
-    public async Task<Socket> AcceptClient()
+    public async Task<Socket?> AcceptClient()
     {
         Socket? socket = null;
         try
@@ -74,8 +73,13 @@ public class ServerSocket
         return socket;
     }
 
-    public async void Handle(Client client)
-    { 
+    private async void HandleClient(Socket clientSocket)
+    {
+        var client = new Client
+        {
+            Socket = clientSocket
+        };
+
         Clients.Add(client);
 
         await SendNickname(client);
@@ -97,10 +101,7 @@ public class ServerSocket
 
                 if (byteCount == 0)
                 {
-                    PrintColoredText(client.NickName, client.ConsoleColor);
-                    Clients.Remove(client);
-                    Console.WriteLine(" disconnected. Total clients: {0}", Clients.Count);
-                    
+                    RemoveClient(client);
                     continue;
                 }
 
@@ -112,10 +113,7 @@ public class ServerSocket
             }
             catch (SocketException)
             {
-                PrintColoredText(client.NickName, client.ConsoleColor);
-                Clients.Remove(client);
-                Console.WriteLine(" disconnected. Total clients: {0}", Clients.Count);
-
+                RemoveClient(client);
                 break;
             }
             catch (Exception e)
@@ -124,6 +122,13 @@ public class ServerSocket
                 Console.WriteLine(e.Message);
             }
         }
+    }
+
+    private void RemoveClient(Client client)
+    {
+        PrintColoredText(client.NickName, client.ConsoleColor);
+        Clients.Remove(client);
+        Console.WriteLine(" disconnected. Total clients: {0}", Clients.Count);
     }
 
     private async Task SendMessageToOtherClients(Client client, string messageText)
@@ -143,6 +148,7 @@ public class ServerSocket
             }
             catch (SocketException)
             {
+                //to do: sa adaug o metoda de remove cu look
                 Clients.Remove(c);
             }
             catch (Exception e)

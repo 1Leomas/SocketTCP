@@ -12,6 +12,8 @@ public class ClientSocket
 
     public string Nickname { get; set; } = string.Empty;
 
+    private string _input { get; set; } = "";
+
     public ClientSocket()
     {
         _clientSocket = new Socket(
@@ -20,20 +22,21 @@ public class ClientSocket
             ProtocolType.Tcp);
     }
 
-    public async Task Connect(string remoteIP, int remotePort)
+    public async Task Connect(string remoteIp, int remotePort)
     {
-        var ipAddress = IPAddress.Parse(remoteIP);
-        var remotEndPoint = new IPEndPoint(ipAddress, remotePort);
+        var ipAddress = IPAddress.Parse(remoteIp);
+        var remoteEndPoint = new IPEndPoint(ipAddress, remotePort);
 
         try
         {
-            await _clientSocket.ConnectAsync(remotEndPoint);
+            await _clientSocket.ConnectAsync(remoteEndPoint);
 
-            Console.WriteLine("Client connected to {0}", remotEndPoint);
+            Console.WriteLine("Client connected to {0}", remoteEndPoint);
         }
         catch (Exception e)
         {
-            Console.WriteLine("Error while connecting to server. {0}", e.Message);
+            Console.WriteLine("Error while connecting to server.");
+            Console.WriteLine("Error message: {0}", e.Message);
         }
     }
 
@@ -48,13 +51,36 @@ public class ClientSocket
                     printNickname(Nickname, _consoleColor);
                     Console.Write(": ");
 
-                    var text = Console.ReadLine() ?? "";
+                    //var text = Console.ReadLine() ?? "";
+                    var text = "";
+
+                    var inputKey = new ConsoleKeyInfo();
+
+                    while (true)
+                    {
+
+                        inputKey = Console.ReadKey();
+
+                        if (inputKey.Key == ConsoleKey.Enter) break;
+
+                        _input += inputKey.KeyChar;
+                    }
 
                     if (text == "x") break;
 
-                    var bytesData = Encoding.UTF8.GetBytes(text);
+                    var bytesData = Encoding.UTF8.GetBytes(_input);
 
                     await _clientSocket.SendAsync(bytesData, SocketFlags.None);
+
+                    printNickname(Nickname, _consoleColor);
+                    Console.WriteLine(": {0}", _input);
+
+                    _input = "";
+                }
+                catch (SocketException e)
+                {
+                    Console.WriteLine(e.Message);
+                    break;
                 }
                 catch (Exception e)
                 {
@@ -85,7 +111,9 @@ public class ClientSocket
                 catch (Exception)
                 {
                     Console.WriteLine();
-                    Console.WriteLine("Server disconnected");
+                    //Console.WriteLine("Server disconnected");
+                    System.Environment.Exit(0);
+
                     break;
                 }
 
@@ -131,7 +159,7 @@ public class ClientSocket
         Console.WriteLine(": {0}", message);
 
         printNickname(Nickname, _consoleColor);
-        Console.Write(": ");
+        Console.Write(": {0}", _input);
     }
 
     public async Task<bool> ReceiveNickname()

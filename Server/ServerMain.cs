@@ -2,7 +2,15 @@
 
 var server = new ServerSocket("127.0.0.1", 5050);
 
-if (!server.BindAndListen(15))
+try
+{
+    server.BindAndListen(15);
+}
+catch (Exception e)
+{
+    Console.WriteLine(e.Message);
     return;
+}
+
 
 await server.AcceptAndHandleClients();

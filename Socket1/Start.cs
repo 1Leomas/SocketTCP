@@ -16,8 +16,7 @@ infoClient.UseShellExecute = true;
 Process serverProcess = Process.Start(infoServer);
 
 
-
-for (int i = 0; i < 3; i++)
+for (int i = 0; i < 2; i++)
 {
     Process clientProcess = Process.Start(infoClient);
 }
