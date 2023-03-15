@@ -13,6 +13,8 @@ public class ServerSocket
 
     private List<Client> _clients;
 
+    private static readonly object _locker = new object();
+
     public ServerSocket(string ip, int port)
     {
         _clients = new List<Client>();
@@ -151,10 +153,12 @@ public class ServerSocket
 
     private void RemoveClient(Client client)
     {
-        //to do: sa adaug o metoda de remove cu look
-        PrintColoredText(client.NickName, client.ConsoleColor);
-        _clients.Remove(client);
-        Console.WriteLine(" disconnected. Total clients: {0}", _clients.Count);
+        lock (_locker)
+        {
+            PrintColoredText(client.NickName, client.ConsoleColor);
+            _clients.Remove(client);
+            Console.WriteLine(" disconnected. Total clients: {0}", _clients.Count);
+        }
     }
 
     private void SendMessageToOtherClients(Client client, string messageText)
