@@ -5,7 +5,16 @@
 
 var client = new ClientSocket();
 
-client.Connect("127.0.0.1", 5050);
+try
+{
+    client.Connect("127.0.0.1", 5050);
+}
+catch (Exception e)
+{
+    Console.WriteLine("Cannot connect to server.");
+    //Console.WriteLine(e);
+    return;
+}
 
 client.ReceiveNickname();
 

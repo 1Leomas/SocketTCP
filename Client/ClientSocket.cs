@@ -30,12 +30,14 @@ public class ClientSocket
         try
         {
             _clientSocket.Connect(remoteEndPoint);
-
             Console.WriteLine("Client connected to {0}", remoteEndPoint);
+        }
+        catch (SocketException e)
+        {
+            throw;
         }
         catch (Exception e)
         {
-            Console.WriteLine("Error while connecting to server.");
             Console.WriteLine("Error message: {0}", e.Message);
         }
     }
