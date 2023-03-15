@@ -42,48 +42,47 @@ public class ClientSocket
 
     public void SendMessageLoop()
     {
-        //Task.Run(() =>
-        var thread = new Thread(() =>
+        while (true)
         {
+            PrintColoredText(Nickname, _consoleColor);
+            Console.Write(": ");
+
             while (true)
             {
-                PrintColoredText(Nickname, _consoleColor);
-                Console.Write(": ");
-
-                while (true)
-                {
-                    var inputKey = Console.ReadKey();
-                    if (inputKey.Key == ConsoleKey.Enter) break;
-                    _input.Append(inputKey.KeyChar);
-                }
-
-                var bytesData = Encoding.UTF8.GetBytes(_input.ToString());
-
-                try
-                {
-                    _clientSocket.Send(bytesData);
-                }
-                catch (SocketException e)
-                {
-                    Console.WriteLine(e.Message);
-                    break;
-                }
-
-                PrintColoredText(Nickname, _consoleColor);
-                Console.WriteLine(": {0}", _input);
-
-                _input.Clear();
+                var inputKey = Console.ReadKey();
+                if (inputKey.Key == ConsoleKey.Enter) break;
+                _input.Append(inputKey.KeyChar);
             }
 
-            _clientSocket.Close();
-        });
-        thread.Start();
+            var bytesData = Encoding.UTF8.GetBytes(_input.ToString());
+
+            try
+            {
+                _clientSocket.Send(bytesData);
+            }
+            catch (SocketException e)
+            {
+                Console.WriteLine(e.Message);
+                break;
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message);
+                break;
+            }
+
+            PrintColoredText(Nickname, _consoleColor);
+            Console.WriteLine(": {0}", _input);
+
+            _input.Clear();
+        }
+
+        _clientSocket.Close();
     }
 
     public void ReceiveMessagesLoop()
     {
-        //Task.Run(() =>
-        var thread = new Thread(() => 
+        Task.Run(() =>
         {
             while (true)
             {
@@ -94,11 +93,11 @@ public class ClientSocket
                 {
                     byteCount = _clientSocket.Receive(buffer);
                 }
-                catch (Exception)
+                catch (Exception e)
                 {
-                    Console.WriteLine();
+                    Console.WriteLine(e.Message);
                     //Console.WriteLine("Server disconnected");
-                    System.Environment.Exit(0);
+                    Environment.Exit(0);
 
                     break;
                 }
@@ -111,7 +110,6 @@ public class ClientSocket
                 ProcessAndPrintMessage(dataFromServer);
             }
         });
-        thread.Start();
     }
 
     private void ProcessAndPrintMessage(string dataFromServer)

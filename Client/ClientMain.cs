@@ -9,6 +9,7 @@ client.Connect("127.0.0.1", 5050);
 
 client.ReceiveNickname();
 
+client.ReceiveMessagesLoop();
+
 client.SendMessageLoop();
 
-client.ReceiveMessagesLoop();
